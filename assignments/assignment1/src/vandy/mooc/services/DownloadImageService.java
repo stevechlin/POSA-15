@@ -1,5 +1,6 @@
 package vandy.mooc.services;
 
+import vandy.mooc.activities.DisplayImagesActivity;
 import vandy.mooc.utils.Utils;
 import android.app.Activity;
 import android.app.IntentService;
@@ -76,7 +77,13 @@ public class DownloadImageService extends IntentService {
     	// the directory pathname as an "extra" to the intent
         // to tell the Service where to place the image within
         // external storage.
-        return null;
+    	Intent intent = new Intent(context, DownloadImageService.class);
+    	intent.setData(url);
+    	intent.putExtra(REQUEST_CODE, requestCode);
+    	intent.putExtra(MESSENGER, new Messenger(downloadHandler));
+    	intent.putExtra(DIRECTORY_PATHNAME, directoryPathname);
+    	
+        return intent;
     }
 
     /**
@@ -127,20 +134,25 @@ public class DownloadImageService extends IntentService {
     public void onHandleIntent(Intent intent) {
         // Get the URL associated with the Intent data.
         // @@ TODO -- you fill in here.
+    	Uri url = intent.getData();
 
         // Get the directory pathname where the image will be stored.
         // @@ TODO -- you fill in here.
+    	String dirPath = intent.getStringExtra(DIRECTORY_PATHNAME);
 
         // Download the requested image.
         // @@ TODO -- you fill in here.
+    	Uri pathname = Utils.downloadImage(DownloadImageService.this, url, dirPath);
 
         // Extract the Messenger stored as an extra in the
         // intent under the key MESSENGER.
         // @@ TODO -- you fill in here.
+    	Messenger messenger = (Messenger) intent.getExtras().get(MESSENGER); 
 
         // Send the path to the image file back to the
         // MainActivity via the messenger.
         // @@ TODO -- you fill in here.
+    	sendPath(messenger, pathname, url);
     }
 
     /**
@@ -153,12 +165,16 @@ public class DownloadImageService extends IntentService {
         // Call the makeReplyMessage() factory method to create
         // Message.
         // @@ TODO -- you fill in here.
-        
+        Message message = makeReplyMessage(pathToImageFile, url);
+        try {
             // Send the path to the image file back to the
             // MainActivity.
             // @@ TODO -- you fill in here.
+        	messenger.send(message);
+        } catch (RemoteException e) {
+            Log.e(TAG,"Error sending message:", e);
+        }
     }
-
     /**
      * A factory method that creates a Message to return to the
      * MainActivity with the pathname of the downloaded image.
@@ -170,22 +186,28 @@ public class DownloadImageService extends IntentService {
 
         // Create a new Bundle to handle the result.
         // @@ TODO -- you fill in here.
-
+        Bundle bundle = new Bundle();
+        
         // Put the URL to the image file into the Bundle via the
         // IMAGE_URL key.
         // @@ TODO -- you fill in here.
-
+        bundle.putString(IMAGE_URL, url.toString());
+        
         // Return the result to indicate whether the download
         // succeeded or failed.
         // @@ TODO -- you fill in here.
+        message.arg1 = (pathToImageFile.toString() == null)? 
+        				Activity.RESULT_CANCELED : Activity.RESULT_OK;
 
         // Put the path to the image file into the Bundle via the
         // IMAGE_PATHNAME key only if the download succeeded.
         // @@ TODO -- you fill in here.
+        bundle.putString(DIRECTORY_PATHNAME, pathToImageFile.toString());
 
         // Set the Bundle to be the data in the message.
         // @@ TODO -- you fill in here.
-
+        message.setData(bundle);
+        
         return message;
     }
 }
